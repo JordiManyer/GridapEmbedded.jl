@@ -17,7 +17,7 @@ function _get_values_at_owned_coords(φh,model::DistributedDiscreteModel{Dc,Dp})
     # Cell-to-node map for the original model
     # topo = get_grid_topology(model)
     # c2n_map = get_faces(topo,Dc,0)
-    c2n_map = collect1d(get_cell_node_ids(model))
+    c2n_map = get_cell_node_ids(model)
 
     # Cell-wise node coordinates (in ReferenceDomain coordinates)
     cell_reffe = get_cell_reffe(model)
@@ -28,11 +28,13 @@ function _get_values_at_owned_coords(φh,model::DistributedDiscreteModel{Dc,Dp})
     values  = Vector{T}(undef,num_nodes(own_model))
     touched = fill(false,num_nodes(model))
 
+    cell_node_ids_cache = array_cache(c2n_map)
     cell_node_coords_cache = array_cache(cell_node_coords)
     for cell in own_to_local_cell # For each owned cell
       field = φh_data[cell]
       node_coords = getindex!(cell_node_coords_cache,cell_node_coords,cell)
-      for (iN,node) in enumerate(c2n_map[cell]) # Go over local nodes
+      node_ids = getindex!(cell_node_ids_cache,c2n_map,cell)
+      for (iN,node) in enumerate(node_ids) # Go over local nodes
         own_node = local_to_own_node[node]
         if (own_node != 0) && !touched[node] # Compute value if suitable
           values[own_node] = field(node_coords[iN])
